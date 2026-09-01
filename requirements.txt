@@ -1,0 +1,100 @@
+# Data Pipeline Core Dependencies
+# Production dependencies required for the orchestrator
+
+# Configuration and Environment
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# HTTP Requests and API Communication
+requests>=2.28.0
+
+# Google Cloud Platform
+google-cloud-bigquery>=3.10.0
+google-cloud-bigquery-storage>=2.24.0  # Arrow-based fast downloads for Union-Find export
+google-cloud-storage>=2.9.0
+google-cloud-secret-manager>=2.16.0
+google-api-python-client>=2.150.0  # Required for DCM/Campaign Manager 360 API v5
+
+# Facebook Business API
+facebook-business>=17.0.0
+
+# Data Processing and Analysis
+pandas>=1.5.0
+pandas-gbq>=0.26.1
+python-dateutil>=2.8.2
+pyarrow>=10.0.0
+duckdb>=0.10.0
+numpy>=1.21.0
+
+# Database Connectivity
+sqlalchemy>=1.4.0
+pymysql>=1.0.0
+psycopg2-binary>=2.9.0  # Postgres driver (Survey Engine)
+
+# SSH and Remote Connections (WordPress)
+fabric>=3.0.0
+paramiko>=3.0.0
+
+# Text Formatting
+nameparser>=1.1.0
+titlecase>=2.4.0
+
+# Document Generation
+python-docx>=0.8.10
+openpyxl>=3.0.0
+python-pptx>=0.6.21
+
+# Date/Time Handling
+pytz>=2022.1
+
+# FastAPI REST API Server
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+
+# Testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+
+# =============================================================================
+# NLP / Machine Learning (for LimeSurvey question standardization)
+# =============================================================================
+
+# Sentence Transformers for semantic similarity
+sentence-transformers>=2.2.0
+transformers>=4.30.0
+torch>=2.0.0
+
+# spaCy NLP
+spacy>=3.7.0
+
+# scispaCy biomedical NLP (install with --no-deps on Python 3.13)
+# pip install scispacy --no-deps
+# pip install --no-deps https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_md-0.5.4.tar.gz
+# pip install --no-deps https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_ner_bc5cdr_md-0.5.4.tar.gz
+
+# Fuzzy matching
+rapidfuzz>=3.0.0
+
+# UMLS local database support
+owlready2>=0.45
+
+# Machine learning
+scikit-learn>=1.3.0
+
+# BigQuery types
+db-dtypes>=1.1.0
+
+# =============================================================================
+# UI (Streamlit) extras
+# =============================================================================
+
+# Streamlit itself. >=1.36 is required for st.context.headers, which the
+# LimeSurvey mapper uses to read the X-Goog-Authenticated-User-Email header
+# IAP injects. Older Streamlit silently has no st.context attribute, the
+# header read raises, and every reviewer falls into the local-dev fallback
+# path -- bypassing the IAP gate entirely. Do not relax this lower bound.
+streamlit>=1.36
+
+# Sidebar navigation component with built-in Bootstrap icons. Used by the
+# LimeSurvey mapper's sidebar (ui/limesurvey/limesurvey_mapper.py).
+streamlit-option-menu>=0.3.13

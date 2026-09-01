@@ -1,0 +1,60 @@
+# Lightweight dependencies for CI (syntax tests + config validation)
+# Excludes heavy ML/NLP packages that don't build on all platforms
+
+# Configuration and Environment
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# HTTP Requests and API Communication
+requests>=2.28.0
+
+# Google Cloud Platform
+google-cloud-bigquery>=3.10.0
+google-cloud-storage>=2.9.0
+google-cloud-secret-manager>=2.16.0
+google-api-python-client>=2.150.0
+
+# Facebook Business API
+facebook-business>=17.0.0
+
+# Data Processing and Analysis
+pandas>=1.5.0
+python-dateutil>=2.8.2
+pyarrow>=10.0.0
+duckdb>=0.10.0
+numpy>=1.21.0
+
+# Database Connectivity
+sqlalchemy>=1.4.0
+pymysql>=1.0.0
+psycopg2-binary>=2.9.0  # Postgres driver (Survey Engine)
+
+# SSH and Remote Connections (WordPress)
+fabric>=3.0.0
+paramiko>=3.0.0
+
+# Text Formatting
+nameparser>=1.1.0
+titlecase>=2.4.0
+
+# Document Generation
+python-docx>=0.8.10
+openpyxl>=3.0.0
+python-pptx>=0.6.21
+
+# Date/Time Handling
+pytz>=2022.1
+
+# FastAPI REST API Server
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+
+# Testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+
+# Fuzzy matching
+rapidfuzz>=3.0.0
+
+# BigQuery types
+db-dtypes>=1.1.0
