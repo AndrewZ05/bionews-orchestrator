@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-03-31T00:00:00.000Z" agent="Claude" version="24.0.0" type="device">
+  <diagram id="profile_erd" name="Profile Database ERD (Legacy / Conceptual)">
+    <mxGraphModel dx="2800" dy="2200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="3300" pageHeight="2400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ================================================================ -->
+        <!-- GROUP LABELS -->
+        <!-- ================================================================ -->
+        <mxCell id="grp_profile_label" value="Profile Tables" style="text;html=1;fontSize=18;fontStyle=1;fillColor=none;align=left;verticalAlign=top;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="grp_ref_label" value="Reference Tables (Enums)" style="text;html=1;fontSize=18;fontStyle=1;fillColor=none;align=left;verticalAlign=top;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="20" y="1420" width="300" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="grp_dict_label" value="Concept Dictionaries" style="text;html=1;fontSize=18;fontStyle=1;fillColor=none;align=left;verticalAlign=top;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="1700" y="1420" width="300" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="legacy_warning" value="&lt;b&gt;Legacy conceptual diagram only.&lt;/b&gt;&lt;br/&gt;Use PROFILE_DATABASE_SCHEMA_CONTRACT.md and shared/profile_database_manifest.py as the current source of truth." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;fontStyle=1;align=left;spacingLeft=10;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="20" y="40" width="760" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ================================================================ -->
+        <!-- PROFILE_CORE (center top) -->
+        <!-- ================================================================ -->
+        <mxCell id="profile_core" value="&lt;b&gt;profile_core&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:10px'&gt;&lt;b&gt;bn_id&lt;/b&gt; STRING PK&lt;br/&gt;bionews_uk STRING&lt;br/&gt;email STRING&lt;br/&gt;email_hash STRING&lt;br/&gt;&lt;b&gt;account_type&lt;/b&gt; STRING&lt;br/&gt;nickname STRING&lt;br/&gt;site_domain STRING&lt;br/&gt;consent_status STRING&lt;br/&gt;cookie_consent_date TIMESTAMP&lt;br/&gt;tracking_consent BOOL&lt;br/&gt;communication_opt_in BOOL&lt;br/&gt;preferred_condition STRUCT&lt;br/&gt;treatments_of_interest ARRAY&lt;br/&gt;gender STRING&lt;br/&gt;country STRING&lt;br/&gt;hcp_status BOOL&lt;br/&gt;identity_confidence_score INT64&lt;br/&gt;persona_source STRING&lt;br/&gt;profile_stage STRING&lt;br/&gt;first_name STRING&lt;br/&gt;last_name STRING&lt;br/&gt;display_name STRING&lt;br/&gt;cluster_tier STRING&lt;br/&gt;cluster_size INT64&lt;br/&gt;source_systems ARRAY&lt;br/&gt;created_at TIMESTAMP&lt;br/&gt;last_active_at TIMESTAMP&lt;br/&gt;profile_updated_at TIMESTAMP&lt;/font&gt;" style="shape=table;startSize=28;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="680" y="50" width="250" height="530" as="geometry" />
+        </mxCell>
+
+        <!-- ================================================================ -->
+        <!-- PERSONA SUB-PROFILES (fan out from core) -->
+        <!-- ================================================================ -->
+
+        <!-- profile_patient (left of core) -->
+        <mxCell id="profile_patient" value="&lt;b&gt;profile_patient&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:10px'&gt;&lt;b&gt;bn_id&lt;/b&gt; STRING FK&lt;br/&gt;condition_subtype STRUCT&lt;br/&gt;diagnosis_stage STRING&lt;br/&gt;joined_patient_community BOOL&lt;br/&gt;symptom_tags ARRAY&amp;lt;STRUCT&amp;gt;&lt;br/&gt;treatments_current ARRAY&amp;lt;STRUCT&amp;gt;&lt;br/&gt;treatments_of_interest ARRAY&amp;lt;STRUCT&amp;gt;&lt;br/&gt;diagnosis_timing_band STRING&lt;br/&gt;updated_at TIMESTAMP&lt;/font&gt;" style="shape=table;startSize=28;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="50" y="50" width="240" height="210" as="geometry" />
+        </mxCell>
+
+        <!-- profile_caregiver -->
+        <mxCell id="profile_caregiver" value="&lt;b&gt;profile_caregiver&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:10px'&gt;&lt;b&gt;bn_id&lt;/b&gt; STRING FK&lt;br/&gt;condition_supported STRUCT&lt;br/&gt;relationship_to_patient STRING&lt;br/&gt;joined_caregiver_community BOOL&lt;br/&gt;caregiver_focus_areas ARRAY&lt;br/&gt;updated_at TIMESTAMP&lt;/font&gt;" style="shape=table;startSize=28;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="50" y="290" width="240" height="160" as="geometry" />
+        </mxCell>
+
+        <!-- profile_family_or_friend -->
+        <mxCell id="profile_family" value="&lt;b&gt;profile_family_or_friend&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:10px'&gt;&lt;b&gt;bn_id&lt;/b&gt; STRING FK&lt;br/&gt;condition_following STRUCT&lt;br/&gt;relationship_to_patient STRING&lt;br/&gt;joined_community BOOL&lt;br/&gt;interest_areas ARRAY&lt;br/&gt;updated_at TIMESTAMP&lt;/font&gt;" style="shape=table;startSize=28;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="50" y="480" width="240" height="160" as="geometry" />
+        </mxCell>
+
+        <!-- profile_hcp (right of core) -->
+        <mxCell id="profile_hcp" value="&lt;b&gt;profile_hcp&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:10px'&gt;&lt;b&gt;bn_id&lt;/b&gt; STRING FK&lt;br/&gt;npi_number STRING&lt;br/&gt;aim_dgid STRING&lt;br/&gt;specialty STRUCT&lt;br/&gt;condition_focus ARRAY&amp;lt;STRUCT&amp;gt;&lt;br/&gt;treatments_discussed ARRAY&amp;lt;STRUCT&amp;gt;&lt;br/&gt;practice_country STRING&lt;br/&gt;practice_setting STRING&lt;br/&gt;practicing_since_year INT64&lt;br/&gt;years_in_practice_band STRING&lt;br/&gt;patient_volume_band STRING&lt;br/&gt;credentials STRING&lt;br/&gt;primary_specialty_code STRING&lt;br/&gt;all_specialties ARRAY&lt;br/&gt;provider_organization STRING&lt;br/&gt;practice_city STRING&lt;br/&gt;practice_state STRING&lt;br/&gt;practice_postal_code STRING&lt;br/&gt;practice_phone STRING&lt;br/&gt;updated_at TIMESTAMP&lt;/font&gt;" style="shape=table;startSize=28;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="50" width="240" height="400" as="geometry" />
+        </mxCell>
+
+        <!-- profile_other -->
+        <mxCell id="profile_other" value="&lt;b&gt;profile_other&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:10px'&gt;&lt;b&gt;bn_id&lt;/b&gt; STRING FK&lt;br/&gt;interest_tags ARRAY&lt;br/&gt;follow_conditions ARRAY&amp;lt;STRUCT&amp;gt;&lt;br/&gt;joined_newsletter_topics ARRAY&lt;br/&gt;updated_at TIMESTAMP&lt;/font&gt;" style="shape=table;startSize=28;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="480" width="240" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- ================================================================ -->
+        <!-- ACTIVITY / ENGAGEMENT TABLES (below core) -->
+        <!-- ================================================================ -->
+
+        <!-- profile_engagement -->
+        <mxCell id="profile_engagement" value="&lt;b&gt;profile_engagement&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:10px'&gt;&lt;b&gt;bn_id&lt;/b&gt; STRING FK&lt;br/&gt;mailchimp_status STRING&lt;br/&gt;email_open_count INT64&lt;br/&gt;email_click_count INT64&lt;br/&gt;last_email_open TIMESTAMP&lt;br/&gt;last_email_click TIMESTAMP&lt;br/&gt;first_seen_web TIMESTAMP&lt;br/&gt;last_seen_web TIMESTAMP&lt;br/&gt;total_sessions INT64&lt;br/&gt;total_pageviews INT64&lt;br/&gt;total_form_submissions INT64&lt;br/&gt;total_ad_impressions INT64&lt;br/&gt;total_ad_clicks INT64&lt;br/&gt;total_video_views INT64&lt;br/&gt;total_file_downloads INT64&lt;br/&gt;total_comments INT64&lt;br/&gt;total_forum_interactions INT64&lt;br/&gt;avg_scroll_depth FLOAT64&lt;br/&gt;avg_session_duration_sec FLOAT64&lt;br/&gt;engagement_tier STRING&lt;br/&gt;predicted_ltv FLOAT64&lt;br/&gt;wordpress_comment_count INT64&lt;br/&gt;survey_response_count INT64&lt;br/&gt;loaded_at TIMESTAMP&lt;/font&gt;" style="shape=table;startSize=28;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="400" y="660" width="250" height="480" as="geometry" />
+        </mxCell>
+
+        <!-- profile_identifiers -->
+        <mxCell id="profile_identifiers" value="&lt;b&gt;profile_identifiers&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:10px'&gt;&lt;b&gt;bn_id&lt;/b&gt; STRING FK&lt;br/&gt;identifier_type STRING&lt;br/&gt;identifier_value STRING&lt;br/&gt;source_system STRING&lt;br/&gt;confidence FLOAT64&lt;br/&gt;first_seen TIMESTAMP&lt;br/&gt;last_seen TIMESTAMP&lt;br/&gt;is_primary BOOL&lt;br/&gt;loaded_at TIMESTAMP&lt;/font&gt;" style="shape=table;startSize=28;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="700" y="660" width="220" height="210" as="geometry" />
+        </mxCell>
+
+        <!-- site_events -->
+        <mxCell id="site_events" value="&lt;b&gt;site_events&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:10px'&gt;&lt;b&gt;event_id&lt;/b&gt; STRING PK&lt;br/&gt;bn_id STRING FK (nullable)&lt;br/&gt;bnfpvid STRING&lt;br/&gt;client_id STRING&lt;br/&gt;event_name STRING&lt;br/&gt;event_category STRING&lt;br/&gt;event_timestamp TIMESTAMP&lt;br/&gt;session_id STRING&lt;br/&gt;site_domain STRING&lt;br/&gt;page_path STRING&lt;br/&gt;event_label STRING&lt;br/&gt;event_value FLOAT64&lt;br/&gt;traffic_source STRING&lt;br/&gt;device_category STRING&lt;br/&gt;loaded_at TIMESTAMP&lt;/font&gt;" style="shape=table;startSize=28;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="960" y="660" width="220" height="310" as="geometry" />
+        </mxCell>
+
+        <!-- profile_events -->
+        <mxCell id="profile_events" value="&lt;b&gt;profile_events&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:10px'&gt;&lt;b&gt;event_id&lt;/b&gt; STRING PK&lt;br/&gt;&lt;b&gt;bn_id&lt;/b&gt; STRING FK&lt;br/&gt;event_name STRING&lt;br/&gt;event_timestamp TIMESTAMP&lt;br/&gt;session_id STRING&lt;br/&gt;account_type STRING&lt;br/&gt;properties STRING (JSON)&lt;br/&gt;loaded_at TIMESTAMP&lt;/font&gt;" style="shape=table;startSize=28;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="660" width="220" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- profile_survey_data -->
+        <mxCell id="profile_survey_data" value="&lt;b&gt;profile_survey_data&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:10px'&gt;&lt;b&gt;bn_id&lt;/b&gt; STRING FK&lt;br/&gt;survey_id INT64&lt;br/&gt;response_id STRING&lt;br/&gt;cde_id STRING&lt;br/&gt;field_name STRING&lt;br/&gt;value_text STRING&lt;br/&gt;value_numeric FLOAT64&lt;br/&gt;value_array ARRAY&lt;br/&gt;response_submitted_at TIMESTAMP&lt;br/&gt;mapping_confidence FLOAT64&lt;/font&gt;" style="shape=table;startSize=28;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="700" y="900" width="220" height="230" as="geometry" />
+        </mxCell>
+
+        <!-- profile_consent -->
+        <mxCell id="profile_consent" value="&lt;b&gt;profile_consent&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:10px'&gt;&lt;b&gt;bn_id&lt;/b&gt; STRING FK&lt;br/&gt;consent_purpose STRING&lt;br/&gt;consent_category STRING&lt;br/&gt;consent_granted BOOL&lt;br/&gt;consent_updated_at TIMESTAMP&lt;br/&gt;dsr_request_type STRING&lt;br/&gt;dsr_request_status STRING&lt;/font&gt;" style="shape=table;startSize=28;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="890" width="220" height="180" as="geometry" />
+        </mxCell>
+
+        <!-- profile_newsletter_preferences -->
+        <mxCell id="profile_newsletter" value="&lt;b&gt;profile_newsletter_preferences&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:10px'&gt;&lt;b&gt;bn_id&lt;/b&gt; STRING FK&lt;br/&gt;site_domain STRING&lt;br/&gt;newsletter_key STRING&lt;br/&gt;newsletter_label STRING&lt;br/&gt;is_subscribed BOOL&lt;br/&gt;subscribed_at TIMESTAMP&lt;br/&gt;source STRING&lt;/font&gt;" style="shape=table;startSize=28;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="50" y="660" width="250" height="180" as="geometry" />
+        </mxCell>
+
+        <!-- profile_forum_settings -->
+        <mxCell id="profile_forum" value="&lt;b&gt;profile_forum_settings&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:10px'&gt;&lt;b&gt;bn_id&lt;/b&gt; STRING FK&lt;br/&gt;notify_forum_replies BOOL&lt;br/&gt;notify_group_invites BOOL&lt;br/&gt;notify_direct_messages BOOL&lt;br/&gt;subscribed_forum_ids ARRAY&lt;br/&gt;subscribed_group_ids ARRAY&lt;br/&gt;profile_visibility STRING&lt;br/&gt;forum_registered_at TIMESTAMP&lt;br/&gt;last_forum_activity TIMESTAMP&lt;/font&gt;" style="shape=table;startSize=28;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="50" y="870" width="250" height="210" as="geometry" />
+        </mxCell>
+
+        <!-- profile_zero_party -->
+        <mxCell id="profile_zero_party" value="&lt;b&gt;profile_zero_party&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:10px'&gt;&lt;b&gt;bn_id&lt;/b&gt; STRING FK&lt;br/&gt;interaction_type STRING&lt;br/&gt;interaction_id STRING&lt;br/&gt;question_text STRING&lt;br/&gt;answer_value STRING&lt;br/&gt;answer_score FLOAT64&lt;br/&gt;site_domain STRING&lt;br/&gt;responded_at TIMESTAMP&lt;/font&gt;" style="shape=table;startSize=28;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1110" width="250" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- ================================================================ -->
+        <!-- RELATIONSHIPS: Core ↔ Sub-profiles (1:1) -->
+        <!-- ================================================================ -->
+        <mxCell id="rel_core_patient" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=0.15;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=ERone;endFill=0;startArrow=ERone;startFill=0;strokeWidth=1.5;strokeColor=#82b366;" edge="1" parent="1" source="profile_core" target="profile_patient">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_core_caregiver" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=0.4;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=ERone;endFill=0;startArrow=ERone;startFill=0;strokeWidth=1.5;strokeColor=#82b366;" edge="1" parent="1" source="profile_core" target="profile_caregiver">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_core_family" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=0.65;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;endArrow=ERone;endFill=0;startArrow=ERone;startFill=0;strokeWidth=1.5;strokeColor=#82b366;" edge="1" parent="1" source="profile_core" target="profile_family">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_core_hcp" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.15;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=ERone;endFill=0;startArrow=ERone;startFill=0;strokeWidth=1.5;strokeColor=#82b366;" edge="1" parent="1" source="profile_core" target="profile_hcp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_core_other" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.65;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=ERone;endFill=0;startArrow=ERone;startFill=0;strokeWidth=1.5;strokeColor=#82b366;" edge="1" parent="1" source="profile_core" target="profile_other">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ================================================================ -->
+        <!-- RELATIONSHIPS: Core ↔ Activity tables (1:N and 1:1) -->
+        <!-- ================================================================ -->
+        <mxCell id="rel_core_engagement" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=0.3;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=ERone;endFill=0;startArrow=ERone;startFill=0;strokeWidth=1.5;strokeColor=#d6b656;" edge="1" parent="1" source="profile_core" target="profile_engagement">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_core_identifiers" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;strokeWidth=1.5;strokeColor=#d6b656;" edge="1" parent="1" source="profile_core" target="profile_identifiers">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_core_siteevents" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=0.7;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;strokeWidth=1.5;strokeColor=#d6b656;" edge="1" parent="1" source="profile_core" target="site_events">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_core_profevents" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=0.9;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;strokeWidth=1.5;strokeColor=#d6b656;" edge="1" parent="1" source="profile_core" target="profile_events">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_core_survey" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;strokeWidth=1.5;strokeColor=#d6b656;" edge="1" parent="1" source="profile_identifiers" target="profile_survey_data">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_core_consent" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=1;exitY=0.8;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;strokeWidth=1.5;strokeColor=#d6b656;" edge="1" parent="1" source="site_events" target="profile_consent">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1330" y="650" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_core_newsletter" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=0.1;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;strokeWidth=1.5;strokeColor=#d6b656;" edge="1" parent="1" source="profile_core" target="profile_newsletter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_core_forum" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=ERone;endFill=0;startArrow=ERone;startFill=0;strokeWidth=1.5;strokeColor=#d6b656;" edge="1" parent="1" source="profile_newsletter" target="profile_forum">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_core_zeroparty" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;strokeWidth=1.5;strokeColor=#d6b656;" edge="1" parent="1" source="profile_forum" target="profile_zero_party">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ================================================================ -->
+        <!-- REFERENCE TABLES (bottom left group) -->
+        <!-- ================================================================ -->
+        <mxCell id="ref_condition_subtype" value="&lt;b&gt;ref_condition_subtype&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;condition STRING&lt;br/&gt;business_code STRING&lt;br/&gt;label STRING&lt;br/&gt;mesh_id STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="20" y="1460" width="190" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ref_diagnosis_stage" value="&lt;b&gt;ref_diagnosis_stage&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;value STRING&lt;br/&gt;label STRING&lt;br/&gt;personalization_logic STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="230" y="1460" width="190" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="ref_symptom" value="&lt;b&gt;ref_symptom&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;value STRING&lt;br/&gt;label STRING&lt;br/&gt;mesh_id STRING&lt;br/&gt;hpo_id STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="440" y="1460" width="190" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ref_caregiver_rel" value="&lt;b&gt;ref_caregiver_relationship&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;value STRING&lt;br/&gt;label STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="650" y="1460" width="190" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ref_hcp_specialty" value="&lt;b&gt;ref_hcp_specialty&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;value STRING&lt;br/&gt;label STRING&lt;br/&gt;snomed_id STRING&lt;br/&gt;taxonomy_code STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="860" y="1460" width="190" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ref_practice_setting" value="&lt;b&gt;ref_practice_setting&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;value STRING&lt;br/&gt;label STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="1460" width="190" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ref_yip" value="&lt;b&gt;ref_years_in_practice&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;value STRING&lt;br/&gt;label STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="1280" y="1460" width="190" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ref_patient_vol" value="&lt;b&gt;ref_patient_volume&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;value STRING&lt;br/&gt;label STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="20" y="1590" width="190" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ref_cg_focus" value="&lt;b&gt;ref_caregiver_focus_area&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;value STRING&lt;br/&gt;label STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="230" y="1590" width="190" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ref_condition" value="&lt;b&gt;ref_condition&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;value STRING&lt;br/&gt;label STRING&lt;br/&gt;mesh_id STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="440" y="1590" width="190" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="ref_treatment" value="&lt;b&gt;ref_treatment&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;value STRING&lt;br/&gt;label STRING&lt;br/&gt;rxnorm_id STRING&lt;br/&gt;generic_name STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="650" y="1590" width="190" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ref_gender" value="&lt;b&gt;ref_gender&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;value STRING&lt;br/&gt;label STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="860" y="1590" width="190" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ref_event_type" value="&lt;b&gt;ref_site_event_type&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;event_name STRING&lt;br/&gt;event_category STRING&lt;br/&gt;description STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="1590" width="190" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="ref_newsletter_type" value="&lt;b&gt;ref_newsletter_type&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;newsletter_key STRING&lt;br/&gt;label STRING&lt;br/&gt;default_subscribed BOOL&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="1280" y="1590" width="190" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="ref_engagement_tier" value="&lt;b&gt;ref_engagement_tier&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;value STRING&lt;br/&gt;label STRING&lt;br/&gt;min_score FLOAT64&lt;br/&gt;max_score FLOAT64&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="20" y="1700" width="190" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ref_topic" value="&lt;b&gt;ref_topic&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;value STRING&lt;br/&gt;label STRING&lt;br/&gt;description STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="230" y="1700" width="190" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- ================================================================ -->
+        <!-- CONCEPT DICTIONARIES (bottom right group) -->
+        <!-- ================================================================ -->
+        <mxCell id="conditions_dict" value="&lt;b&gt;conditions_dict&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;&lt;b&gt;condition_key&lt;/b&gt; STRING PK&lt;br/&gt;label STRING&lt;br/&gt;mesh_id STRING&lt;br/&gt;mesh_tree_number STRING&lt;br/&gt;icd10_code STRING&lt;br/&gt;condition_category STRING&lt;br/&gt;aliases ARRAY&lt;br/&gt;description STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="1700" y="1460" width="220" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="symptoms_dict" value="&lt;b&gt;symptoms_dict&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;&lt;b&gt;symptom_key&lt;/b&gt; STRING PK&lt;br/&gt;label STRING&lt;br/&gt;mesh_id STRING&lt;br/&gt;hpo_id STRING&lt;br/&gt;snomed_id STRING&lt;br/&gt;applicable_conditions ARRAY&lt;br/&gt;severity_scale STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="1950" y="1460" width="220" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="treatments_dict" value="&lt;b&gt;treatments_dict&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;&lt;b&gt;treatment_key&lt;/b&gt; STRING PK&lt;br/&gt;label STRING&lt;br/&gt;generic_name STRING&lt;br/&gt;rxnorm_id STRING&lt;br/&gt;treatment_class STRING&lt;br/&gt;applicable_conditions ARRAY&lt;br/&gt;fda_approval_year INT64&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="2200" y="1460" width="220" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="subtypes_dict" value="&lt;b&gt;subtypes_dict&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;&lt;b&gt;subtype_key&lt;/b&gt; STRING PK&lt;br/&gt;&lt;b&gt;condition_key&lt;/b&gt; STRING FK&lt;br/&gt;label STRING&lt;br/&gt;business_code STRING&lt;br/&gt;mesh_id STRING&lt;br/&gt;snomed_code STRING&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="1700" y="1680" width="220" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="dictionary_meta" value="&lt;b&gt;dictionary_meta&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;dictionary_name STRING&lt;br/&gt;external_source STRING&lt;br/&gt;external_source_version STRING&lt;br/&gt;last_curated_at TIMESTAMP&lt;br/&gt;last_curated_by STRING&lt;br/&gt;entry_count INT64&lt;/font&gt;" style="shape=table;startSize=24;container=0;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=0;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="1950" y="1680" width="220" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- Dictionary relationships -->
+        <mxCell id="rel_subtypes_conditions" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;endArrow=ERone;endFill=0;startArrow=ERmany;startFill=0;strokeWidth=1.5;strokeColor=#b85450;" edge="1" parent="1" source="subtypes_dict" target="conditions_dict">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ================================================================ -->
+        <!-- RELATIONSHIP LEGEND -->
+        <!-- ================================================================ -->
+        <mxCell id="legend" value="&lt;b&gt;Relationships&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:10px'&gt;profile_core (1) ─── (1) profile_patient&lt;br/&gt;&amp;nbsp;&amp;nbsp;Filter: account_type = 'patient'&lt;br/&gt;&lt;br/&gt;profile_core (1) ─── (1) profile_caregiver&lt;br/&gt;&amp;nbsp;&amp;nbsp;Filter: account_type = 'caregiver'&lt;br/&gt;&lt;br/&gt;profile_core (1) ─── (1) profile_hcp&lt;br/&gt;&amp;nbsp;&amp;nbsp;Filter: account_type = 'hcp'&lt;br/&gt;&lt;br/&gt;profile_core (1) ─── (1) profile_family_or_friend&lt;br/&gt;&amp;nbsp;&amp;nbsp;Filter: account_type = 'family_or_friend'&lt;br/&gt;&lt;br/&gt;profile_core (1) ─── (1) profile_other&lt;br/&gt;&amp;nbsp;&amp;nbsp;Filter: account_type = 'other'&lt;br/&gt;&lt;br/&gt;profile_core (1) ─── (1) profile_engagement&lt;br/&gt;profile_core (1) ─── (1) profile_forum_settings&lt;br/&gt;profile_core (1) ──&amp;lt; (N) profile_identifiers&lt;br/&gt;profile_core (1) ──&amp;lt; (N) profile_newsletter_preferences&lt;br/&gt;profile_core (1) ──&amp;lt; (N) profile_consent&lt;br/&gt;profile_core (1) ──&amp;lt; (N) profile_survey_data&lt;br/&gt;profile_core (1) ──&amp;lt; (N) profile_events&lt;br/&gt;profile_core (1) ──&amp;lt; (N) site_events&lt;br/&gt;profile_core (1) ──&amp;lt; (N) profile_zero_party&lt;br/&gt;&lt;br/&gt;subtypes_dict (N) ──&amp;gt; (1) conditions_dict&lt;br/&gt;&amp;nbsp;&amp;nbsp;FK: subtypes_dict.condition_key&lt;br/&gt;&lt;br/&gt;profile_identifiers ──&amp;gt; identity_hub_data.bn_id_xref&lt;br/&gt;&amp;nbsp;&amp;nbsp;Materialized copy from identity hub&lt;br/&gt;&lt;br/&gt;dictionary_meta — standalone (no FK)&lt;br/&gt;ref_* tables — standalone enums (no FK)&lt;/font&gt;" style="text;html=1;fillColor=#f5f5f5;strokeColor=#999999;rounded=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;spacingRight=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1500" y="50" width="370" height="580" as="geometry" />
+        </mxCell>
+
+        <!-- ================================================================ -->
+        <!-- TABLE DESCRIPTIONS -->
+        <!-- ================================================================ -->
+        <mxCell id="descriptions" value="&lt;b&gt;Table Descriptions&lt;/b&gt;&lt;hr size='1'/&gt;&lt;font style='font-size:9px'&gt;&lt;b&gt;profile_core&lt;/b&gt; — Central profile. Identity, persona, demographics, consent, name. One row per person.&lt;br/&gt;&lt;b&gt;profile_patient&lt;/b&gt; — Patient sub-profile. Condition subtype, diagnosis, symptoms, treatments.&lt;br/&gt;&lt;b&gt;profile_caregiver&lt;/b&gt; — Caregiver sub-profile. Condition supported, relationship, focus areas.&lt;br/&gt;&lt;b&gt;profile_hcp&lt;/b&gt; — HCP sub-profile. NPI data, specialty, practice location, credentials.&lt;br/&gt;&lt;b&gt;profile_family_or_friend&lt;/b&gt; — Family/friend sub-profile. Condition following, relationship.&lt;br/&gt;&lt;b&gt;profile_other&lt;/b&gt; — Other sub-profile. Interest tags, followed conditions.&lt;br/&gt;&lt;b&gt;profile_engagement&lt;/b&gt; — Engagement summary. Email, web, forms, video, ads, engagement tier.&lt;br/&gt;&lt;b&gt;profile_identifiers&lt;/b&gt; — All identifiers per person. Materialized from identity hub.&lt;br/&gt;&lt;b&gt;site_events&lt;/b&gt; — Site analytics events from GA4/GTM. Page views, scrolls, forms.&lt;br/&gt;&lt;b&gt;profile_events&lt;/b&gt; — Lifecycle events. SSO login, profile update, consent change.&lt;br/&gt;&lt;b&gt;profile_survey_data&lt;/b&gt; — CDE-normalized survey responses from LimeSurvey.&lt;br/&gt;&lt;b&gt;profile_consent&lt;/b&gt; — Consent purposes per user. Pending OneTrust integration.&lt;br/&gt;&lt;b&gt;profile_newsletter_preferences&lt;/b&gt; — Per-user per-site newsletter subscriptions.&lt;br/&gt;&lt;b&gt;profile_forum_settings&lt;/b&gt; — BuddyBoss community preferences. SSO users only.&lt;br/&gt;&lt;b&gt;profile_zero_party&lt;/b&gt; — Quiz, poll, inline prompt responses from editorial content.&lt;br/&gt;&lt;b&gt;conditions_dict&lt;/b&gt; — Curated condition vocabulary (MeSH, ICD-10, aliases).&lt;br/&gt;&lt;b&gt;symptoms_dict&lt;/b&gt; — Curated symptom vocabulary (MeSH + HPO, severity scales).&lt;br/&gt;&lt;b&gt;treatments_dict&lt;/b&gt; — Curated treatment vocabulary (RxNorm, treatment class).&lt;br/&gt;&lt;b&gt;subtypes_dict&lt;/b&gt; — Condition subtype vocabulary (SNOMED, business codes).&lt;br/&gt;&lt;b&gt;dictionary_meta&lt;/b&gt; — Dictionary provenance and versioning.&lt;br/&gt;&lt;b&gt;ref_*&lt;/b&gt; (16 tables) — Enum/picklist tables for constrained field validation.&lt;/font&gt;" style="text;html=1;fillColor=#f5f5f5;strokeColor=#999999;rounded=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;spacingRight=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1500" y="660" width="370" height="540" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

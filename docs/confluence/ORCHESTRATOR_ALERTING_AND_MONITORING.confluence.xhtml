@@ -1,0 +1,390 @@
+<ac:structured-macro ac:name="info">
+  <ac:rich-text-body>
+    <p><strong>Audience:</strong> Data pipeline operators and on-call engineers.<br/>
+    <strong>Scope:</strong> How the orchestrator detects problems, who gets notified and how, and how to use the monitoring dashboard to investigate and recover.</p>
+    <p>File paths and config keys are shown in <code>inline code</code>; they refer to locations in the <code>orchestrator</code> repository, not clickable links.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+
+<h2>Contents</h2>
+<ac:structured-macro ac:name="toc">
+  <ac:parameter ac:name="maxLevel">2</ac:parameter>
+  <ac:parameter ac:name="minLevel">2</ac:parameter>
+</ac:structured-macro>
+
+<h2>Overview</h2>
+<p>The orchestrator is a plugin-based ETL system: each data source has an extractor plugin and a YAML config, and data flows <strong>Extract &#8594; Parquet &#8594; GCS &#8594; BigQuery staging &#8594; hash-merge &#8594; production &#8594; post-process SQL</strong>. Every run is tracked centrally in BigQuery so it can be alerted on and monitored.</p>
+<p>There are <strong>five independent alerting mechanisms</strong>. The first three are the day-to-day signal; the last two are operational safety nets.</p>
+<table>
+  <tbody>
+    <tr><th>#</th><th>Mechanism</th><th>Answers the question</th></tr>
+    <tr><td>1</td><td><strong>Job failure alerts</strong></td><td>"Did a pipeline run fail or complete with warnings?"</td></tr>
+    <tr><td>2</td><td><strong>Freshness audit</strong></td><td>"Is any production table stale (not updated recently enough)?"</td></tr>
+    <tr><td>3</td><td><strong>Anomaly audit</strong></td><td>"Did a table's data pattern look wrong (missing dates, bad volume, schema/quality drift)?"</td></tr>
+    <tr><td>4</td><td><strong>Git drift monitor</strong></td><td>"Is a deployed checkout running stale code because <code>git pull</code> is stuck?"</td></tr>
+    <tr><td>5</td><td><strong>Orphaned job cleanup</strong></td><td>"Is a job stuck in RUNNING even though its process is dead?"</td></tr>
+  </tbody>
+</table>
+<p>All notifications are <strong>email over SMTP (Gmail)</strong>. Everything is recorded in the <code>orchestrator_monitoring</code>, <code>freshness_audit</code>, and <code>anomaly_audit</code> BigQuery datasets.</p>
+
+<h2>How a job runs (the process)</h2>
+<p>Understanding the job lifecycle makes the alerts below make sense.</p>
+<ol>
+  <li><strong>Registration.</strong> When <code>orchestrate.py</code> starts a source, it writes a row to <code>orchestrator_monitoring.jobs</code> with status <strong>RUNNING</strong>, recording host, PID, user, command line, trigger, and timestamps.</li>
+  <li><strong>Locking.</strong> The job acquires a distributed lock in <code>orchestrator_monitoring.job_locks</code> (see <code>shared/job_lock_bq.py</code>). The lock is a <strong>lease</strong> that a background heartbeat refreshes every ~120s (<code>ORCHESTRATOR_LOCK_HEARTBEAT_SECONDS</code>). Only one run per source can hold the lock at a time. If the process dies, the lease stops being refreshed and <strong>expires within minutes</strong> &#8212; this is the authoritative "is it really running?" signal.</li>
+  <li><strong>Execution.</strong> The extractor runs. Per-table progress is recorded in <code>orchestrator_monitoring.table_processing</code> (rows inserted/updated, per-table status, staging errors).</li>
+  <li><strong>Completion.</strong> The job row is updated to a terminal status &#8212; <strong>COMPLETED</strong>, <strong>FAILED</strong>, or a partial/warning state &#8212; with <code>completed_at</code>, <code>duration_seconds</code>, and any <code>error_message</code>. The lock is released.</li>
+  <li><strong>On failure/warning &#8594; alert.</strong> A <strong>job failure alert</strong> email is dispatched (see Alert type 1).</li>
+  <li><strong>Independently, on a schedule</strong>, the <strong>freshness</strong> and <strong>anomaly</strong> audits scan production tables and email summaries; the <strong>git drift</strong> monitor checks the deployed code; and <strong>orphaned job cleanup</strong> reconciles any RUNNING rows whose process is actually gone.</li>
+</ol>
+<ac:structured-macro ac:name="info">
+  <ac:rich-text-body>
+    <p><strong>Key idea:</strong> the job's <em>status</em> (in <code>jobs</code>) and its <em>liveness</em> (in <code>job_locks</code>) are tracked separately. A row can say <code>RUNNING</code> while the process is long dead &#8212; which is exactly what orphaned-job cleanup and the dashboard's lock column exist to catch.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+
+<h2>The alerting model at a glance</h2>
+<table>
+  <tbody>
+    <tr><th>Alert type</th><th>Trigger</th><th>Config file(s)</th><th>Sender function</th><th>Severity / status values</th></tr>
+    <tr><td>Job failure</td><td>Pipeline run fails / warns</td><td><code>configs/alerting.yaml</code>, <code>configs/defaults.yaml</code></td><td><code>send_job_failure_alert</code> (<code>shared/monitoring.py</code>)</td><td>FAILURE / PARTIAL / WARNING / INFO</td></tr>
+    <tr><td>Freshness</td><td>A table is stale</td><td><code>configs/table_freshness.yaml</code> + per-source <code>audit:</code> blocks</td><td><code>send_summary_email</code> (<code>shared/freshness_audit/email_sender.py</code>)</td><td>PASS / WARNING / FAIL / ERROR / STATIC</td></tr>
+    <tr><td>Anomaly</td><td>A data pattern looks wrong</td><td><code>configs/anomaly_audit.yaml</code> + per-source <code>audit:</code> blocks</td><td><code>send_anomaly_summary</code> (<code>shared/anomaly_audit/email_sender.py</code>)</td><td>HIGH / MEDIUM / LOW (+ ACTIVE / HISTORICAL)</td></tr>
+    <tr><td>Git drift</td><td>Checkout lags <code>origin/main</code></td><td><code>configs/defaults.yaml</code></td><td><code>_alert</code> (<code>scripts/check_git_drift.py</code>)</td><td>behind &gt; threshold / dirty tree / error</td></tr>
+    <tr><td>Orphan cleanup</td><td>RUNNING job whose process is dead</td><td><code>configs/defaults.yaml</code></td><td><em>(no email; updates status to KILLED)</em></td><td>status = KILLED</td></tr>
+  </tbody>
+</table>
+
+<h2>Email delivery (SMTP)</h2>
+<p>All emails are sent with Python's <code>smtplib</code> over Gmail SMTP (TLS on port 587). Configuration comes from environment variables and/or the YAML config, with env vars taking precedence.</p>
+<table>
+  <tbody>
+    <tr><th>Setting</th><th>Env var</th><th>Config path</th><th>Default</th></tr>
+    <tr><td>SMTP host</td><td><code>SMTP_HOST</code></td><td><code>alerting.email.smtp_server</code></td><td><code>smtp.gmail.com</code></td></tr>
+    <tr><td>SMTP port</td><td><code>SMTP_PORT</code></td><td><code>alerting.email.smtp_port</code></td><td><code>587</code></td></tr>
+    <tr><td>Sender address</td><td><code>ALERT_SENDER_EMAIL</code></td><td><code>alerting.email.sender_email</code></td><td><em>(required)</em></td></tr>
+    <tr><td>Sender password</td><td><code>ALERT_SENDER_PASSWORD</code></td><td><code>alerting.email.sender_password</code></td><td><em>(required &#8212; Gmail app password)</em></td></tr>
+    <tr><td>Recipient</td><td><code>ALERT_RECIPIENT_EMAIL</code></td><td><code>alerting.email.recipient_email</code></td><td><em>(required)</em></td></tr>
+    <tr><td>Master switch</td><td>&#8212;</td><td><code>alerting.enabled</code></td><td><code>true</code></td></tr>
+    <tr><td>Send on failure</td><td>&#8212;</td><td><code>alerting.on_failure</code></td><td><code>true</code></td></tr>
+    <tr><td>Send on success</td><td>&#8212;</td><td><code>alerting.on_success</code></td><td><code>false</code></td></tr>
+  </tbody>
+</table>
+<ac:structured-macro ac:name="note">
+  <ac:rich-text-body>
+    <p>The <strong>sender password must be a Gmail App Password</strong> (16 characters), not the normal account password. Store it in <code>.env</code>, never in the repo.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+<p><strong>Message format:</strong> job-failure emails are plain text; the freshness and anomaly audit emails are <strong>multipart</strong> (a fixed-width plain-text part plus an HTML part).</p>
+<ac:structured-macro ac:name="note">
+  <ac:rich-text-body>
+    <p><strong>ASCII-only rule:</strong> alert subject lines and log strings are kept ASCII (use <code>--</code> or <code>:</code> instead of em-dashes). Non-ASCII characters cause mojibake in production logs and email clients.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+
+<h2>Alert type 1 &#8212; Job failure alerts</h2>
+<p><strong>Purpose:</strong> notify operators the moment a pipeline run fails or finishes with warnings, and hand them everything needed to diagnose and retry.</p>
+<ul>
+  <li><strong>Code:</strong> <code>shared/monitoring.py</code> &#8212; <code>send_job_failure_alert(job_id, source, error_message, config, severity="FAILURE")</code> (an optional <code>send_job_success_alert</code> exists but is off by default).</li>
+  <li><strong>Triggered from:</strong> <code>orchestrate.py</code>, on job failure / partial failure (and on success only if <code>alerting.on_success</code> is enabled).</li>
+</ul>
+<h3>Severity levels</h3>
+<p>Severity drives the subject prefix and email header. Defined in <code>_SEVERITY_LABELS</code> (<code>shared/monitoring.py</code>):</p>
+<table>
+  <tbody>
+    <tr><th>Severity</th><th>Subject tag</th><th>Meaning</th></tr>
+    <tr><td><code>FAILURE</code></td><td><code>[FAILED]</code></td><td>The run failed.</td></tr>
+    <tr><td><code>PARTIAL</code></td><td><code>[PARTIAL FAILURE]</code></td><td>Some tables succeeded, some failed.</td></tr>
+    <tr><td><code>WARNING</code></td><td><code>[WARNING]</code></td><td>Completed, but with warnings.</td></tr>
+    <tr><td><code>INFO</code></td><td><code>[INFO]</code></td><td>Informational notice; completed.</td></tr>
+  </tbody>
+</table>
+<p><strong>Subject format:</strong> <code>[SOURCE] [SEVERITY] &lt;summary&gt;</code> &#8212; e.g. <code>[FACEBOOK] [FAILED] Pipeline Failed</code>.</p>
+<h3>What the email contains</h3>
+<ol>
+  <li>Severity-driven header.</li>
+  <li>Job details &#8212; job ID, source, timestamps.</li>
+  <li>The error message / status detail.</li>
+  <li><strong>Per-table tracking</strong> (from <code>orchestrator_monitoring.table_processing</code>): each table's status, rows inserted/updated, staging rows, and error text.</li>
+  <li><strong>Full log content</strong> pulled from the job's <code>log_file_path</code> (GCS or local).</li>
+  <li><strong>Auto-generated recovery commands</strong> &#8212; ready-to-run retry commands (same parameters, per-table retries, manifest-based retry, or a full rebuild for schema errors).</li>
+  <li>References &#8212; the BigQuery table paths to investigate manually.</li>
+</ol>
+
+<h2>Alert type 2 &#8212; Freshness audit</h2>
+<p><strong>Purpose:</strong> a scheduled scan that answers "is every important table as up-to-date as it should be?" by comparing each table's most-recent data date against configured thresholds.</p>
+<ul>
+  <li><strong>Code:</strong> <code>shared/freshness_audit/</code> &#8212; <code>audit_runner.py</code> (<code>run_audit</code>), <code>email_sender.py</code> (<code>send_summary_email</code>), <code>status_rules.py</code> (<code>determine_status</code>), <code>yaml_target_loader.py</code> (targets).</li>
+  <li><strong>Results table:</strong> <code>freshness_audit.table_freshness_results</code> (one row per table per run); run metadata in <code>freshness_audit.audit_runs</code>.</li>
+</ul>
+<h3>Status values and how they're decided</h3>
+<table>
+  <tbody>
+    <tr><th>Status</th><th>Meaning</th></tr>
+    <tr><td><code>PASS</code></td><td>Fresh enough.</td></tr>
+    <tr><td><code>WARNING</code></td><td>Within the warning window (aging).</td></tr>
+    <tr><td><code>FAIL</code></td><td>Past the freshness threshold (stale).</td></tr>
+    <tr><td><code>ERROR</code></td><td>The table could not be validated/queried.</td></tr>
+    <tr><td><code>STATIC</code></td><td>Intentionally-unchanged reference data (not treated as stale).</td></tr>
+  </tbody>
+</table>
+<p>Decision order in <code>determine_status(days_behind, warning_threshold_days, freshness_threshold_days, is_static)</code>:</p>
+<ol>
+  <li><code>days_behind &gt; freshness_threshold_days</code> &#8594; <strong>FAIL</strong></li>
+  <li><code>is_static</code> and within threshold &#8594; <strong>STATIC</strong></li>
+  <li><code>days_behind &gt;= warning_threshold_days</code> &#8594; <strong>WARNING</strong></li>
+  <li>otherwise &#8594; <strong>PASS</strong></li>
+</ol>
+<h3>Configuration</h3>
+<p>Global defaults live in <code>configs/table_freshness.yaml</code> (e.g. <code>freshness_threshold_days</code>, <code>warning_threshold_days</code>, recipients, retry policy). <strong>Per-table overrides</strong> live in each source's YAML under an <code>audit:</code> block:</p>
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">yaml</ac:parameter>
+  <ac:plain-text-body><![CDATA[resources:
+  my_table:
+    audit:
+      freshness_threshold_days: 7
+      warning_threshold_days: 5
+      cadence: rare            # human label: daily|weekly|monthly|quarterly|annual|rare|static
+      reason: "Reference data; infrequent updates expected"
+      send_email_notification: true
+      email_recipients: "owner@example.com"]]></ac:plain-text-body>
+</ac:structured-macro>
+<h3>Email</h3>
+<p><strong>Subject</strong> (date-stamped, ASCII): reflects run-over-run change &#8212; e.g. <code>Table Freshness Audit Results - N NEW FAILURES, M recovered - YYYY-MM-DD</code>, or <code>... - FAILURES FOUND - ...</code>, or just <code>... - YYYY-MM-DD</code> when clear.</p>
+<p><strong>Body:</strong> run ID + timestamp; summary counts (PASS/WARNING/FAIL/ERROR/STATIC); a "changes since last run" section (newly-failed and recovered tables); a BigQuery console link; a fixed-width table grouped by dataset (STATUS, DATASET.TABLE, LAST_DATE, DAYS_BEHIND, TOTAL_ROWS, RECENT_ROWS, POLICY); policy notes; and an ERROR-detail section.</p>
+<p><strong>Send decision:</strong> an email is sent only if <strong>any result is WARNING/FAIL/ERROR</strong>, or <code>always_send</code> is set. An all-clear run sends nothing (unless forced).</p>
+
+<h2>Alert type 3 &#8212; Anomaly audit</h2>
+<p><strong>Purpose:</strong> a scheduled scan for tables whose data <em>pattern</em> looks wrong even if the table isn't strictly stale.</p>
+<ul>
+  <li><strong>Code:</strong> <code>shared/anomaly_audit/</code> &#8212; <code>anomaly_runner.py</code> (<code>run_anomaly_audit</code>), <code>email_sender.py</code> (<code>send_anomaly_summary</code>), and per-signal detectors. Targets come from the <strong>same</strong> loader as the freshness audit, so the two audits cover an identical table list.</li>
+  <li><strong>Results table:</strong> <code>anomaly_audit.anomaly_results</code>; run metadata in <code>anomaly_audit.audit_runs</code>.</li>
+</ul>
+<h3>Detectors</h3>
+<table>
+  <tbody>
+    <tr><th>Detector</th><th>Detects</th><th>Severity</th></tr>
+    <tr><td><strong>Recency</strong></td><td>Latest expected dates are missing (lag beyond <code>grace</code>)</td><td>HIGH</td></tr>
+    <tr><td><strong>Volume</strong></td><td>Daily row count is a statistical outlier (MAD-based band)</td><td>MEDIUM</td></tr>
+    <tr><td><strong>Structural</strong></td><td>Columns added/removed mid-stream</td><td>MEDIUM</td></tr>
+    <tr><td><strong>Schema drift</strong></td><td>A column's type changed incompatibly</td><td>HIGH</td></tr>
+    <tr><td><strong>Quality</strong></td><td>A metric column is entirely NULL/0</td><td>HIGH</td></tr>
+  </tbody>
+</table>
+<p>Each finding has a <strong>severity</strong> (HIGH/MEDIUM/LOW) and a <strong>scope</strong>: <code>ACTIVE</code> (current, actionable, emailed) or <code>HISTORICAL</code> (past, tracked in BigQuery, summarized as a one-line count only).</p>
+<h3>Configuration</h3>
+<p>Global tuning in <code>configs/anomaly_audit.yaml</code> (e.g. <code>K</code> = MAD multiplier, <code>rel_floor</code>, <code>min_count</code>, <code>grace</code>, <code>history_days</code>, <code>min_history_settled</code>), with optional per-table <code>overrides:</code>.</p>
+<h3>Email</h3>
+<p><strong>Subject:</strong> <code>Anomaly Audit Results - ANOMALIES FOUND - YYYY-MM-DD</code> when there are active findings, else <code>Anomaly Audit Results - YYYY-MM-DD</code>.</p>
+<p><strong>Body:</strong> run ID + timestamp; totals by severity, by detector, and by dataset; "changes since last run" (new vs. resolved active anomalies); best-effort pipeline-job context; and a full findings table (SEVERITY, SCOPE, DATASET.TABLE, DETECTOR, DATE, OBSERVED, DETAIL, POLICY), color-coded, with historical rows dimmed.</p>
+<p><strong>Send decision:</strong> email is sent if there is <strong>&#8805;1 ACTIVE finding</strong>, or <strong>new historical outliers appeared</strong>, or <code>always_send</code> is set.</p>
+<h3>Mutual watchdog</h3>
+<p>Each audit checks whether its sibling has run recently: <code>check_sibling_run(..., max_age_hours=36)</code> queries the other audit's <code>audit_runs</code>. If the sibling has been silent &gt; 36h, a warning is injected into the email body. This is best-effort &#8212; a failed check never fails the audit &#8212; and it's how a <em>silently dead audit</em> gets noticed.</p>
+
+<h2>Alert type 4 &#8212; Git drift monitor</h2>
+<p><strong>Purpose:</strong> a deployed checkout that lags the remote runs <strong>stale code</strong>. This monitor catches a stuck <code>git pull</code> before it silently starves the pipeline.</p>
+<ul>
+  <li><strong>Code:</strong> <code>scripts/check_git_drift.py</code> &#8212; <code>evaluate_drift(repo, branch, remote)</code> computes the drift; <code>main()</code> decides; <code>_alert(title, message)</code> emails via the <code>configs/defaults.yaml</code> notification block.</li>
+</ul>
+<p><strong>Alert conditions</strong> &#8212; an email is sent if any of:</p>
+<ol>
+  <li><code>behind &gt; --max-behind</code> (default threshold 1 commit), or</li>
+  <li>the working tree has <strong>uncommitted tracked changes</strong> (<code>dirty</code>) &#8212; this blocks <code>git pull --ff-only</code>, or</li>
+  <li>the git evaluation itself failed (can't fetch/status).</li>
+</ol>
+<p><strong>Exit codes:</strong> <code>0</code> = OK, <code>2</code> = alert sent, <code>1</code> = error. The email includes the local vs. <code>origin/main</code> HEADs, the behind/ahead counts, the dirty flag, and the exact fix (resolve tracked changes, then <code>git pull --ff-only</code>).</p>
+<ac:structured-macro ac:name="warning">
+  <ac:rich-text-body>
+    <p><strong>Why this matters:</strong> a generated tracked file once dirtied the production VM tree, froze <code>git pull</code> for days, and starved the Identity Hub. This monitor exists so that never recurs silently.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+
+<h2>Alert type 5 &#8212; Orphaned job cleanup (KILLED)</h2>
+<p><strong>Purpose:</strong> reconcile the <code>jobs</code> table with reality &#8212; mark <strong>RUNNING</strong> rows as <strong>KILLED</strong> when the process behind them is actually dead. This does <strong>not</strong> send email; it corrects status (and is what the dashboard's <strong>Reconcile</strong> button and lock column surface).</p>
+<ul>
+  <li><strong>Code:</strong> <code>shared/job_manager.py</code> &#8212; <code>cleanup_orphaned_jobs(bq_client, dataset, hostname=None, stale_running_hours=None)</code>, with <code>_cleanup_locked_orphans(...)</code> for the lock-based pass and <code>is_process_running(pid, os_type)</code> for the local check.</li>
+  <li><strong>Invoked from:</strong> <code>orchestrate.py</code> at startup, and on demand from the dashboard.</li>
+</ul>
+<h3>The four detection passes</h3>
+<ol>
+  <li><strong>Lock-based (all hosts, OS-independent) &#8212; the authoritative pass.</strong> A RUNNING row whose <code>source</code> has <strong>no unexpired lock</strong> in <code>job_locks</code> is KILLED. Because the lock lease auto-expires within minutes of a process dying, an absent lock proves the job is gone regardless of which host or OS ran it. A <strong>grace window</strong> (default 120s, <code>ORCHESTRATOR_LOCK_ORPHAN_GRACE_SECONDS</code>) exempts a job that has inserted its RUNNING row but not yet acquired its lock.</li>
+  <li><strong>Process-based (local host only).</strong> RUNNING rows on this hostname (or with NULL hostname) are KILLED if <code>process_id</code> is NULL or the PID is not alive locally.</li>
+  <li><strong>Time-based (all hosts).</strong> RUNNING rows older than <code>stale_running_hours</code> (default <strong>24h</strong>, <code>ORCHESTRATOR_STALE_RUNNING_HOURS</code>; set <code>0</code> to disable, max 336h) are KILLED. This is the eventual backstop for hosts/PIDs the local check can't see.</li>
+  <li><strong>Legacy <code>_pipeline_executions</code>.</strong> Rows stuck RUNNING for 120+ minutes in the pre-centralized table are KILLED.</li>
+</ol>
+<p>The <code>error_message</code> on a killed row records which pass caught it (e.g. <code>Process no longer running (auto-detected)</code> or <code>Marked KILLED: RUNNING for more than N hours ...</code>).</p>
+
+<h2>Scheduling</h2>
+<p><strong>There is no scheduler inside the repo.</strong> The audits, the git-drift check, and cleanup are invoked by <strong>external cron / Cloud Scheduler</strong>:</p>
+<ul>
+  <li><strong>Job failure alerts</strong> and <strong>orphaned-job cleanup</strong> run <em>inline</em> with <code>orchestrate.py</code> (cleanup at startup; failure alerts on job completion).</li>
+  <li><strong>Freshness / anomaly audits</strong> run as their own orchestrate targets, e.g.:</li>
+</ul>
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">bash</ac:parameter>
+  <ac:plain-text-body><![CDATA[python orchestrate.py --source table_freshness --env prod
+python orchestrate.py --source anomaly_audit   --env prod]]></ac:plain-text-body>
+</ac:structured-macro>
+<ul>
+  <li><strong>Git drift</strong> runs as a standalone cron, e.g. every 6 hours:</li>
+</ul>
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">bash</ac:parameter>
+  <ac:plain-text-body><![CDATA[0 0,6,12,18 * * * cd /home/orchestrator && python scripts/check_git_drift.py --repo . --max-behind 1]]></ac:plain-text-body>
+</ac:structured-macro>
+<p>Confirm the actual cron/Cloud Scheduler entries on the deployment host; the cadence is set there, not in code.</p>
+
+<h2>Configuration &amp; environment variables</h2>
+<h3>Config file hierarchy (later overrides earlier)</h3>
+<p><code>configs/defaults.yaml</code> &#8594; <code>configs/alerting.yaml</code> &#8594; <code>configs/table_freshness.yaml</code> / <code>configs/anomaly_audit.yaml</code> &#8594; <code>configs/{source}.yaml</code> &#8594; per-resource <code>audit:</code> block.</p>
+<h3>Environment variables</h3>
+<p><strong>Email / SMTP (required for all email alerts):</strong></p>
+<table>
+  <tbody>
+    <tr><th>Var</th><th>Purpose</th></tr>
+    <tr><td><code>SMTP_HOST</code></td><td>SMTP endpoint (default <code>smtp.gmail.com</code>)</td></tr>
+    <tr><td><code>SMTP_PORT</code></td><td>SMTP port (default <code>587</code>)</td></tr>
+    <tr><td><code>ALERT_SENDER_EMAIL</code></td><td>From address</td></tr>
+    <tr><td><code>ALERT_SENDER_PASSWORD</code></td><td>Gmail <strong>app password</strong></td></tr>
+    <tr><td><code>ALERT_RECIPIENT_EMAIL</code></td><td>Default recipient</td></tr>
+  </tbody>
+</table>
+<p><strong>BigQuery:</strong></p>
+<table>
+  <tbody>
+    <tr><th>Var</th><th>Purpose</th></tr>
+    <tr><td><code>GCP_PROJECT_ID</code></td><td>Target BigQuery project (e.g. <code>bi-data-391216</code>)</td></tr>
+    <tr><td><code>GOOGLE_APPLICATION_CREDENTIALS</code></td><td>Path to service-account JSON</td></tr>
+  </tbody>
+</table>
+<p><strong>Monitoring &amp; cleanup:</strong></p>
+<table>
+  <tbody>
+    <tr><th>Var</th><th>Default</th><th>Purpose</th></tr>
+    <tr><td><code>ORCHESTRATOR_STALE_RUNNING_HOURS</code></td><td><code>24</code></td><td>Time-based RUNNING&#8594;KILLED threshold (<code>0</code> disables)</td></tr>
+    <tr><td><code>ORCHESTRATOR_LOCK_ORPHAN_GRACE_SECONDS</code></td><td><code>120</code></td><td>Grace window for lock-based cleanup</td></tr>
+    <tr><td><code>ORCHESTRATOR_LOCK_HEARTBEAT_SECONDS</code></td><td><code>120</code></td><td>Lock-lease refresh interval</td></tr>
+  </tbody>
+</table>
+
+<h2>BigQuery tables reference</h2>
+<table>
+  <tbody>
+    <tr><th>Table</th><th>Dataset</th><th>Role</th></tr>
+    <tr><td><code>jobs</code></td><td><code>orchestrator_monitoring</code></td><td>Central job records (status, timestamps, host/PID, <code>log_file_path</code>, <code>error_message</code>).</td></tr>
+    <tr><td><code>job_locks</code></td><td><code>orchestrator_monitoring</code></td><td>Active distributed locks (heartbeat-refreshed leases).</td></tr>
+    <tr><td><code>table_processing</code></td><td><code>orchestrator_monitoring</code></td><td>Per-table status/rows during a job.</td></tr>
+    <tr><td><code>_pipeline_executions</code></td><td><code>orchestrator_monitoring</code></td><td>Legacy execution tracking (deprecated).</td></tr>
+    <tr><td><code>table_freshness_results</code></td><td><code>freshness_audit</code></td><td>One row per table per freshness run.</td></tr>
+    <tr><td><code>audit_runs</code></td><td><code>freshness_audit</code> / <code>anomaly_audit</code></td><td>Per-run metadata (each audit has its own).</td></tr>
+    <tr><td><code>anomaly_results</code></td><td><code>anomaly_audit</code></td><td>One row per finding per anomaly run.</td></tr>
+  </tbody>
+</table>
+
+<h2>The monitoring dashboard</h2>
+<ac:structured-macro ac:name="info">
+  <ac:rich-text-body>
+    <p>The dashboard is a <strong>monitoring aid</strong>, not the alerting system. Alerts (above) push problems to your inbox; the dashboard is where you go to <strong>investigate, read logs, and recover</strong> stuck jobs.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+<p>The screenshot below shows the Pipeline Job Dashboard: header metric cards, the jobs table with colored status pills and the lock-liveness column, and the PROD environment badge.</p>
+<p>
+  <ac:image ac:width="900">
+    <ri:attachment ri:filename="job_dashboard.png" />
+  </ac:image>
+</p>
+<p><strong>What it is:</strong> a Streamlit app, <code>ui/job_dashboard.py</code>, that reads <code>orchestrator_monitoring.jobs</code> and <code>orchestrator_monitoring.job_locks</code>. Deployment details (systemd, firewall, load balancer) are in <code>docs/JOB_DASHBOARD_DEPLOYMENT.md</code>.</p>
+<p><strong>Environments:</strong> a sidebar radio switches project &#8212; <code>prod</code> = <code>bi-data-391216</code>, <code>dev</code> = <code>bi-dev-391216</code>. A <strong>PROD (red) / DEV (green) badge</strong> next to the title makes it unmistakable which environment you're viewing and mutating.</p>
+<p><strong>Launch (port 8502):</strong></p>
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">bash</ac:parameter>
+  <ac:plain-text-body><![CDATA[streamlit run ui/job_dashboard.py --server.port 8502 --server.address 0.0.0.0]]></ac:plain-text-body>
+</ac:structured-macro>
+<p>Port 8502 is fixed (LimeSurvey's mapper owns 8501). It must stay fixed because the firewall rule, load-balancer named port, and health check (<code>/_stcore/health</code>) are all pinned to it.</p>
+<h3>Reading the screen</h3>
+<ul>
+  <li><strong>Header metrics:</strong> Total Jobs, Succeeded (with a success-rate delta = succeeded &#247; (succeeded + failed)), Failed, Running, and Avg Duration. The Succeeded/Failed/Running cards are color-tinted.</li>
+  <li><strong>Jobs table</strong>, one row per job:
+    <ul>
+      <li><strong>Status</strong> &#8212; a colored pill <em>plus</em> an editable dropdown (see status editing below).</li>
+      <li><strong>Lock</strong> &#8212; the liveness badge (see below).</li>
+      <li><strong>Source, Job Name, Started</strong> (relative time, absolute on hover), <strong>Duration, Rows, Host</strong> (monospace), <strong>Trigger</strong>, and a <strong>Log</strong> button.</li>
+    </ul>
+  </li>
+  <li><strong>Detail expander</strong> per job: job ID, source/trigger/refresh-mode, all timestamps (absolute + relative), rows/tables/sites, host/user, the <code>tables</code>/<code>groups</code> arrays, the full <strong>command line</strong>, a red <strong>error</strong> box when present, and an inline <strong>log viewer</strong>.</li>
+</ul>
+<h3>The Lock column (job liveness at a glance)</h3>
+<p>The lock badge reads <code>job_locks</code> (cached 30s) and, <strong>for RUNNING jobs only</strong>, shows:</p>
+<table>
+  <tbody>
+    <tr><th>Badge</th><th>Meaning</th></tr>
+    <tr><td>green, with a countdown (e.g. <code>7m</code>)</td><td>Live lock held &#8212; the process is genuinely running; the number is time to lease expiry.</td></tr>
+    <tr><td>red <code>no lock</code></td><td><strong>Orphaned</strong> &#8212; no active lock; will be marked KILLED on the next reconcile.</td></tr>
+    <tr><td>orange <code>? unknown</code></td><td>Lock table unavailable &#8212; state can't be determined (not treated as dead).</td></tr>
+    <tr><td><code>-</code></td><td>Non-RUNNING status; lock is not meaningful.</td></tr>
+  </tbody>
+</table>
+<h3>Reconcile (recover stuck jobs)</h3>
+<p>Reconcile applies the same <code>cleanup_orphaned_jobs</code> rules described in Alert type 5: any RUNNING row with no live lock/process (host- and OS-independent) is flipped to <strong>KILLED</strong>.</p>
+<ul>
+  <li><strong>Auto-reconcile:</strong> runs <strong>once per environment</strong> on first load &#8212; so simply opening the dashboard corrects bogus RUNNING rows.</li>
+  <li><strong>Manual:</strong> the <strong>Reconcile</strong> button in the sidebar re-runs it on demand and reports how many jobs were killed. A <strong>Refresh</strong> button re-queries without reconciling; a "last updated" caption shows recency.</li>
+</ul>
+<h3>Status editing</h3>
+<p>Each row's status dropdown lets an operator override status directly (calls <code>update_job_status</code>). Allowed values (<code>JOB_STATUSES</code>): <code>QUEUED</code>, <code>RUNNING</code>, <code>COMPLETED</code>, <code>FAILED</code>, <code>WARNING</code>, <code>CANCELLED</code>, <code>KILLED</code>, <code>REVIEWED</code>. There is no state-machine enforcement &#8212; any transition is permitted, so use with care in <strong>PROD</strong>.</p>
+<h3>Log viewing</h3>
+<p>The <strong>Log</strong> button opens a modal that fetches the job's <code>log_file_path</code> via <code>fetch_log_content</code> &#8212; from <strong>GCS</strong> (<code>gs://&#8230;</code>) or the <strong>local filesystem</strong> &#8212; and renders it in a scrollable dark viewer. Missing files return a clear "not found" message rather than an error.</p>
+<h3>Filtering &amp; caching</h3>
+<p>Sidebar filters (in a collapsible section): Source, Status, Hostname, User, Triggered By, Refresh Mode, a free-text <strong>Search</strong> (across job ID, error, command, job name, error type), <strong>Days back</strong> (1&#8211;90, default 14), and <strong>Max rows</strong> (50&#8211;5000, default 500). Jobs are cached 120s and locks 30s; Refresh/Reconcile/status-change all clear the caches.</p>
+
+<h2>Verifying alerts &amp; useful queries</h2>
+<p><strong>Recent failures:</strong></p>
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">sql</ac:parameter>
+  <ac:plain-text-body><![CDATA[SELECT job_id, source, error_message, status_updated_at
+FROM `bi-data-391216.orchestrator_monitoring.jobs`
+WHERE status = 'FAILED'
+  AND status_updated_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
+ORDER BY status_updated_at DESC;]]></ac:plain-text-body>
+</ac:structured-macro>
+<p><strong>Stale tables (today's freshness run):</strong></p>
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">sql</ac:parameter>
+  <ac:plain-text-body><![CDATA[SELECT dataset_name, table_name, audit_status, days_behind
+FROM `bi-data-391216.freshness_audit.table_freshness_results`
+WHERE audit_status = 'FAIL' AND DATE(audited_at) = CURRENT_DATE()
+ORDER BY days_behind DESC;]]></ac:plain-text-body>
+</ac:structured-macro>
+<p><strong>Active anomalies (today):</strong></p>
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">sql</ac:parameter>
+  <ac:plain-text-body><![CDATA[SELECT dataset_name, table_name, detector, severity
+FROM `bi-data-391216.anomaly_audit.anomaly_results`
+WHERE scope = 'ACTIVE' AND DATE(audited_at) = CURRENT_DATE()
+ORDER BY severity, dataset_name;]]></ac:plain-text-body>
+</ac:structured-macro>
+<p><strong>Jobs auto-killed today:</strong></p>
+<ac:structured-macro ac:name="code">
+  <ac:parameter ac:name="language">sql</ac:parameter>
+  <ac:plain-text-body><![CDATA[SELECT job_id, source, error_message, completed_at
+FROM `bi-data-391216.orchestrator_monitoring.jobs`
+WHERE status = 'KILLED' AND DATE(completed_at) = CURRENT_DATE()
+ORDER BY completed_at DESC;]]></ac:plain-text-body>
+</ac:structured-macro>
+
+<h2>Caveats &amp; known limitations</h2>
+<ul>
+  <li><strong>Scheduling lives outside the repo.</strong> Cadence is defined in cron / Cloud Scheduler on the host; confirm it there.</li>
+  <li><strong>Audits only email when there's something to say.</strong> An all-clear freshness or anomaly run sends no email unless <code>always_send</code> is set &#8212; so "no email" means "nothing actionable," not "the audit didn't run." The <strong>mutual watchdog</strong> (36h) is what catches a silently dead audit.</li>
+  <li><strong>Freshness and anomaly audits share one target list</strong>, so they can't drift out of sync on which tables they cover.</li>
+  <li><strong>Dashboard status editing is unguarded</strong> &#8212; any status&#8594;any status. Be deliberate in PROD.</li>
+  <li><strong>Lock-based cleanup depends on a healthy <code>job_locks</code> table.</strong> If locks are unavailable, the dashboard shows orange "unknown" rather than falsely killing jobs, and the 24h time-based pass remains the eventual backstop.</li>
+  <li><strong>Some email bodies reference the project <code>bi-data-391216</code> explicitly.</strong> If you run under a different <code>GCP_PROJECT_ID</code>, verify the console links in emails point where you expect.</li>
+  <li><strong>Email requires a Gmail App Password</strong>, not the account password.</li>
+</ul>
+
+<ac:structured-macro ac:name="info">
+  <ac:rich-text-body>
+    <p><em>This manual reflects the orchestrator code as inspected on 2026-07-02. When behavior and this document disagree, the code is the source of truth &#8212; update this page.</em></p>
+  </ac:rich-text-body>
+</ac:structured-macro>

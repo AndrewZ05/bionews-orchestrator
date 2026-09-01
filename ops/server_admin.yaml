@@ -1,0 +1,23 @@
+##############################################################################
+# Server Administration Configuration
+# ====================================
+# GCP Compute Engine instance backup/restore settings.
+#
+# Usage:
+#   python ops/server_admin.py backup
+#   python ops/server_admin.py restore --image <image-name>
+#   python ops/server_admin.py cleanup
+#   python ops/server_admin.py list
+##############################################################################
+
+project_id: bi-data-391216
+
+instance:
+  name: pipeline-20250926-02
+  zone: us-east1-c
+  region: us-east1
+  static_ip_name: pipeline-ip-20250926
+
+backup:
+  prefix: pipeline-auto
+  retention_days: 30
